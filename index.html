@@ -90,14 +90,20 @@
   }
   .device-switch:hover{ opacity:1; }
 
-  .settings-fab{
+  .settings-fab, .fullscreen-fab{
     position:fixed; right:14px; bottom:14px; z-index:5; width:40px; height:40px;
     border-radius:999px; background:var(--surface); border:1px solid var(--border);
     color:var(--text-muted); box-shadow:var(--shadow); cursor:pointer;
     display:flex; align-items:center; justify-content:center; opacity:.75;
   }
-  .settings-fab:hover{ opacity:1; }
-  .settings-fab svg{ width:18px; height:18px; }
+  .settings-fab:hover, .fullscreen-fab:hover{ opacity:1; }
+  .settings-fab svg, .fullscreen-fab svg{ width:18px; height:18px; }
+  .fullscreen-fab{ bottom:62px; }
+  .fullscreen-note{
+    position:fixed; right:14px; bottom:108px; z-index:5; max-width:240px;
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm);
+    box-shadow:var(--shadow); padding:12px 14px; font-size:12px; color:var(--text-muted);
+  }
 
   .modal-overlay{
     position:fixed; inset:0; background:rgba(0,20,38,.6); z-index:20;
@@ -289,7 +295,8 @@
     exportError: "",
     editingPlayer: null,
     editScoreError: "",
-    confirmRemove: false
+    confirmRemove: false,
+    fullscreenBlocked: false
   };
 
   var app = document.getElementById("app");
@@ -326,6 +333,28 @@
     var s = size || 36;
     return '<span class="avatar" style="width:' + s + 'px;height:' + s + 'px;font-size:' + Math.round(s * 0.4) + 'px;background:' + pal.bg + ';color:' + pal.ink + ';">' + escapeHtml(initial) + '</span>';
   }
+
+  // ---------------- fullscreen ----------------
+  function isFullscreen(){
+    return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+  }
+  function toggleFullscreen(){
+    if(isFullscreen()){
+      var ex = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+      if(ex) ex.call(document);
+      return;
+    }
+    var el = document.documentElement;
+    var req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if(!req){ state.fullscreenBlocked = true; render(); return; }
+    var result = req.call(el);
+    if(result && result.catch){
+      result.catch(function(){ state.fullscreenBlocked = true; render(); });
+    }
+  }
+  ["fullscreenchange", "webkitfullscreenchange", "msfullscreenchange"].forEach(function(evt){
+    document.addEventListener(evt, function(){ state.fullscreenBlocked = false; render(); });
+  });
 
   // ---------------- persistence helpers ----------------
   function saveModePref(m){
@@ -797,6 +826,18 @@
     );
   }
 
+  var expandSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M16 3h3a2 2 0 0 1 2 2v3"></path><path d="M8 21H5a2 2 0 0 1-2-2v-3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>';
+  var compressSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path></svg>';
+
+  function fullscreenControlsHTML(){
+    var icon = isFullscreen() ? compressSvg : expandSvg;
+    var label = isFullscreen() ? "Exit fullscreen" : "Enter fullscreen";
+    var note = state.fullscreenBlocked
+      ? '<div class="fullscreen-note">Fullscreen isn’t available in this view. Try opening this page’s share link directly in its own browser tab first.</div>'
+      : "";
+    return note + '<button type="button" class="fullscreen-fab" data-action="toggle-fullscreen" aria-label="' + label + '" title="' + label + '">' + icon + '</button>';
+  }
+
   var gearSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
 
   // ---------------- top-level render ----------------
@@ -807,10 +848,12 @@
     } else if(state.mode === "leaderboard"){
       html = leaderboardHTML() +
         '<div class="device-switch" data-action="switch-mode">Switch device mode</div>' +
+        fullscreenControlsHTML() +
         '<button type="button" class="settings-fab" data-action="open-settings" aria-label="Event settings">' + gearSvg + '</button>';
     } else {
       html = kioskHTML() +
         '<div class="device-switch" data-action="switch-mode">Switch device mode</div>' +
+        fullscreenControlsHTML() +
         '<button type="button" class="settings-fab" data-action="open-settings" aria-label="Event settings">' + gearSvg + '</button>';
     }
     html += settingsModalHTML();
@@ -860,6 +903,7 @@
       case "ask-remove": state.confirmRemove = true; render(); break;
       case "cancel-remove": state.confirmRemove = false; render(); break;
       case "confirm-remove": removePlayerScore(state.editingPlayer.id); break;
+      case "toggle-fullscreen": toggleFullscreen(); break;
     }
   });
 
