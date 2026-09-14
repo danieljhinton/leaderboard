@@ -250,7 +250,7 @@
   .lb-row .score{ font-weight:700; text-align:right; font-variant-numeric:tabular-nums; font-size:clamp(20px,2.4vw,30px); }
   .lb-row.rank-1{ border-left-color:#F2C94C; background:#0F3050; padding-block:clamp(18px,2.4vw,28px); }
   .lb-row.rank-1 .rank{ color:var(--halo-blue); font-size:clamp(22px,2.6vw,30px); display:flex; align-items:center; }
-  .lb-row.rank-1 .rank svg{ width:clamp(30px,3.4vw,40px); height:clamp(30px,3.4vw,40px); }
+  .lb-row.rank-1 .rank svg{ width:clamp(52px,6vw,78px); height:clamp(52px,6vw,78px); filter:drop-shadow(0 3px 4px rgba(0,0,0,.4)); }
   .lb-row.rank-1 .name{ font-size:clamp(22px,2.8vw,32px); }
   .lb-row.rank-1 .score{ color:var(--halo-blue); font-size:clamp(26px,3.2vw,42px); }
   .lb-row.rank-2{ border-left-color:var(--teal); }
@@ -745,12 +745,18 @@
   }
 
   // ---------------- render: leaderboard ----------------
-  var GOLD_MEDAL_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true">' +
-    '<path d="M12 3 L16 15 L9 11 Z" fill="#0A2540"></path>' +
-    '<path d="M20 3 L16 15 L23 11 Z" fill="#0A2540"></path>' +
-    '<circle cx="16" cy="20" r="10" fill="#F2C94C" stroke="#C6960F" stroke-width="1.5"></circle>' +
-    '<circle cx="16" cy="20" r="6.5" fill="none" stroke="#C6960F" stroke-width="1"></circle>' +
-    '<text x="16" y="24" font-size="10" font-weight="700" text-anchor="middle" fill="#7A4E00">1</text>' +
+  var GOLD_MEDAL_SVG = '<svg viewBox="0 0 40 40" aria-hidden="true">' +
+    '<defs><radialGradient id="goldGrad" cx="35%" cy="28%" r="75%">' +
+      '<stop offset="0%" stop-color="#FFF3D2"></stop>' +
+      '<stop offset="45%" stop-color="#F2C94C"></stop>' +
+      '<stop offset="100%" stop-color="#B8860B"></stop>' +
+    '</radialGradient></defs>' +
+    '<path d="M13 1 L19 1 L19 18 L16 15 L13 18 Z" fill="#002D5B"></path>' +
+    '<path d="M21 1 L27 1 L27 18 L24 15 L21 18 Z" fill="#00CEFF"></path>' +
+    '<circle cx="20" cy="24" r="13" fill="url(#goldGrad)" stroke="#8A660B" stroke-width="1.3"></circle>' +
+    '<circle cx="20" cy="24" r="9.8" fill="none" stroke="#E8B93C" stroke-width="1" opacity="0.85"></circle>' +
+    '<ellipse cx="15" cy="18" rx="4.2" ry="2.3" fill="#fff" opacity="0.35" transform="rotate(-30 15 18)"></ellipse>' +
+    '<text x="20" y="29" font-size="14" font-weight="800" text-anchor="middle" fill="#7A4E00">1</text>' +
   '</svg>';
 
   function leaderboardRowsHTML(){
