@@ -1,0 +1,759 @@
+<title>Booth Scoreboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F5F7F6; --surface:#FFFFFF; --surface-2:#ECF1F0; --border:#DBE3E2;
+    --text:#152225; --text-muted:#57696C;
+    --accent:#E0932E; --accent-ink:#4A2E05; --accent-soft:#FBEAD1;
+    --accent-2:#187A70; --accent-2-ink:#FFFFFF; --accent-2-soft:#DFF2EF;
+    --danger:#C0392B; --danger-soft:#FBEAE7; --success:#1F8F5A;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(21,34,37,.06), 0 10px 26px -14px rgba(21,34,37,.24);
+    --font-display:'Big Shoulders Display','Arial Narrow',sans-serif;
+    --font-body:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+    --font-mono:'IBM Plex Mono','SFMono-Regular',Consolas,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0F1618; --surface:#182124; --surface-2:#1F2A2D; --border:#2B383C;
+      --text:#EDF2F1; --text-muted:#93A6A9;
+      --accent:#F0AE4E; --accent-ink:#2B1B03; --accent-soft:#33260F;
+      --accent-2:#3FC2B2; --accent-2-ink:#06211D; --accent-2-soft:#123330;
+      --danger:#E1685A; --danger-soft:#3A231F; --success:#4FC286;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 26px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F1618; --surface:#182124; --surface-2:#1F2A2D; --border:#2B383C;
+    --text:#EDF2F1; --text-muted:#93A6A9;
+    --accent:#F0AE4E; --accent-ink:#2B1B03; --accent-soft:#33260F;
+    --accent-2:#3FC2B2; --accent-2-ink:#06211D; --accent-2-soft:#123330;
+    --danger:#E1685A; --danger-soft:#3A231F; --success:#4FC286;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 26px -14px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg); color:var(--text); font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:var(--font-display); font-weight:800; letter-spacing:.01em; text-wrap:balance; margin:0; }
+  p{ margin:0; }
+  button{ font-family:inherit; }
+  input{ font-family:inherit; }
+  .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+
+  #app{ min-height:100vh; }
+
+  /* ---------- shared controls ---------- */
+  .btn{
+    appearance:none; border:0; border-radius:12px; cursor:pointer;
+    font-weight:600; font-size:16px; padding:15px 20px; min-height:52px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    transition:transform .08s ease, filter .12s ease;
+  }
+  .btn:active{ transform:scale(.98); }
+  .btn:focus-visible{ outline:3px solid var(--accent-2); outline-offset:2px; }
+  .btn[disabled]{ opacity:.55; cursor:not-allowed; }
+  .btn-primary{ background:var(--accent); color:var(--accent-ink); }
+  .btn-primary:hover:not([disabled]){ filter:brightness(1.05); }
+  .btn-secondary{ background:var(--accent-2-soft); color:var(--accent-2); border:1px solid var(--accent-2); }
+  .btn-secondary:hover:not([disabled]){ filter:brightness(1.03); }
+  .btn-ghost{ background:transparent; color:var(--text-muted); font-weight:500; min-height:auto; padding:8px 10px; }
+  .btn-block{ width:100%; }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size:13px; font-weight:600; color:var(--text-muted); }
+  .field input{
+    border:1.5px solid var(--border); border-radius:10px; padding:13px 14px;
+    font-size:16px; background:var(--surface); color:var(--text);
+  }
+  .field input:focus-visible{ outline:none; border-color:var(--accent-2); box-shadow:0 0 0 3px var(--accent-2-soft); }
+
+  .card{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:24px;
+  }
+
+  .notice{ border-radius:10px; padding:12px 14px; font-size:14px; line-height:1.45; }
+  .notice-danger{ background:var(--danger-soft); color:var(--danger); }
+  .notice-muted{ background:var(--surface-2); color:var(--text-muted); }
+
+  .device-switch{
+    position:fixed; left:14px; bottom:14px; z-index:5;
+    font-size:12px; color:var(--text-muted); background:var(--surface);
+    border:1px solid var(--border); border-radius:999px; padding:7px 13px;
+    box-shadow:var(--shadow); cursor:pointer; opacity:.75;
+  }
+  .device-switch:hover{ opacity:1; }
+
+  .settings-fab{
+    position:fixed; right:14px; bottom:14px; z-index:5; width:40px; height:40px;
+    border-radius:999px; background:var(--surface); border:1px solid var(--border);
+    color:var(--text-muted); box-shadow:var(--shadow); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; opacity:.75;
+  }
+  .settings-fab:hover{ opacity:1; }
+  .settings-fab svg{ width:18px; height:18px; }
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(10,15,16,.6); z-index:20;
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal{ width:100%; max-width:400px; }
+  .modal h2{ font-size:22px; margin-bottom:4px; }
+
+  /* ---------- mode select ---------- */
+  .mode-select{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:28px; padding:32px 20px;
+  }
+  .mode-select .eyebrow{
+    text-transform:uppercase; letter-spacing:.14em; font-size:12px; font-weight:600; color:var(--text-muted);
+  }
+  .mode-tiles{ display:flex; flex-wrap:wrap; gap:16px; justify-content:center; max-width:720px; }
+  .mode-tile{
+    flex:1 1 260px; max-width:320px; text-align:left; cursor:pointer;
+    background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:24px; display:flex; flex-direction:column; gap:10px;
+  }
+  .mode-tile:hover{ border-color:var(--accent-2); }
+  .mode-tile:focus-visible{ outline:3px solid var(--accent-2); outline-offset:2px; }
+  .mode-tile .tile-kicker{ font-family:var(--font-mono); font-size:12px; color:var(--accent-2); font-weight:600; }
+  .mode-tile h3{ font-size:24px; }
+  .mode-tile p{ color:var(--text-muted); font-size:14px; line-height:1.5; }
+
+  /* ---------- kiosk ---------- */
+  .kiosk-screen{ min-height:100vh; display:flex; flex-direction:column; }
+  .kiosk-wrap{
+    max-width:440px; margin:0 auto; width:100%; flex:1;
+    padding:28px 20px 60px; display:flex; flex-direction:column; gap:20px;
+  }
+  .kiosk-brand{ display:flex; flex-direction:column; gap:2px; }
+  .kiosk-brand .title{ font-size:26px; }
+  .kiosk-brand .subtitle{ font-size:13px; color:var(--text-muted); }
+
+  .steps{ display:flex; gap:6px; align-items:center; }
+  .steps .step{
+    flex:1; display:flex; flex-direction:column; gap:6px;
+  }
+  .steps .bar{ height:4px; border-radius:2px; background:var(--border); }
+  .steps .step.active .bar, .steps .step.done .bar{ background:var(--accent-2); }
+  .steps .label{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:600; }
+  .steps .step.active .label{ color:var(--accent-2); }
+
+  .choice-list{ display:flex; flex-direction:column; gap:12px; }
+  .choice-btn{
+    text-align:left; cursor:pointer; background:var(--surface); border:1.5px solid var(--border);
+    border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; display:flex; flex-direction:column; gap:4px;
+  }
+  .choice-btn:hover{ border-color:var(--accent-2); }
+  .choice-btn:focus-visible{ outline:3px solid var(--accent-2); outline-offset:2px; }
+  .choice-btn h3{ font-size:20px; }
+  .choice-btn p{ color:var(--text-muted); font-size:13px; }
+
+  form{ display:flex; flex-direction:column; gap:14px; }
+
+  .search-box{ position:relative; }
+  #existing-list{ display:flex; flex-direction:column; gap:8px; max-height:360px; overflow-y:auto; padding-right:2px; }
+  .player-row{
+    text-align:left; cursor:pointer; width:100%; background:var(--surface-2); border:1px solid var(--border);
+    border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:2px;
+  }
+  .player-row:hover{ border-color:var(--accent-2); }
+  .player-row .name{ font-weight:600; }
+  .player-row .meta{ font-size:12px; color:var(--text-muted); }
+  .empty-hint{ font-size:13px; color:var(--text-muted); text-align:center; padding:20px 10px; }
+
+  .player-context{
+    display:flex; flex-direction:column; gap:2px; padding-bottom:14px; border-bottom:1px solid var(--border); margin-bottom:4px;
+  }
+  .player-context .name{ font-size:22px; font-family:var(--font-display); font-weight:700; }
+  .player-context .meta{ font-size:13px; color:var(--text-muted); }
+  .current-best{ display:flex; align-items:baseline; gap:8px; }
+  .current-best .num{ font-family:var(--font-mono); font-size:28px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .current-best .lbl{ font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+
+  .score-input{ text-align:center; font-family:var(--font-mono); font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; padding:16px; }
+
+  .done-banner{ text-align:center; display:flex; flex-direction:column; gap:6px; align-items:center; padding:8px 0 4px; }
+  .done-banner .kicker{ font-size:13px; font-weight:600; color:var(--accent-2); text-transform:uppercase; letter-spacing:.08em; }
+  .done-banner .num{ font-family:var(--font-display); font-size:64px; font-weight:800; line-height:1; }
+  .done-banner .caption{ font-size:14px; color:var(--text-muted); }
+  .done-actions{ display:flex; flex-direction:column; gap:10px; }
+
+  /* ---------- leaderboard ---------- */
+  .lb{
+    --lb-bg:#0B1113; --lb-panel:#141C1F; --lb-panel-2:#1A2427; --lb-border:#243033;
+    --lb-text:#F4F1E7; --lb-muted:#84979B; --lb-gold:#F2B34D; --lb-silver:#CBD5D8; --lb-bronze:#D9925A; --lb-accent:#2FBFB0;
+    background:var(--lb-bg); color:var(--lb-text); min-height:100vh;
+    display:flex; flex-direction:column; padding:clamp(20px,3vw,44px) clamp(20px,4vw,64px) 90px;
+    font-family:var(--font-body);
+  }
+  .lb-header{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:20px; flex-wrap:wrap;
+    padding-bottom:clamp(16px,2.4vw,28px); border-bottom:1px solid var(--lb-border); margin-bottom:clamp(16px,2.4vw,28px);
+  }
+  .lb-header h1{ font-size:clamp(28px,4.4vw,52px); color:var(--lb-text); }
+  .lb-header .subtitle{ font-size:clamp(13px,1.3vw,17px); color:var(--lb-muted); margin-top:4px; }
+  .lb-status{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  .live-pill{
+    display:flex; align-items:center; gap:7px; font-family:var(--font-mono); font-size:12px; letter-spacing:.08em;
+    color:var(--lb-accent); border:1px solid var(--lb-accent); border-radius:999px; padding:5px 12px;
+  }
+  .live-dot{ width:7px; height:7px; border-radius:999px; background:var(--lb-accent); animation:pulse 1.8s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce){ .live-dot{ animation:none; } }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  .player-count{ font-size:clamp(12px,1.1vw,14px); color:var(--lb-muted); font-family:var(--font-mono); }
+
+  .lb-list{ display:flex; flex-direction:column; gap:10px; flex:1; }
+  .lb-row{
+    display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:clamp(12px,2vw,28px);
+    background:var(--lb-panel); border:1px solid var(--lb-border); border-radius:14px;
+    padding:clamp(12px,1.6vw,20px) clamp(16px,2.2vw,26px); border-left:4px solid transparent;
+  }
+  .lb-row .rank{
+    font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; color:var(--lb-muted);
+    font-size:clamp(16px,1.6vw,20px); min-width:2ch;
+  }
+  .lb-row .name{ font-weight:600; font-size:clamp(17px,1.9vw,24px); overflow-wrap:anywhere; }
+  .lb-row .score{
+    font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; text-align:right;
+    font-size:clamp(20px,2.4vw,30px);
+  }
+  .lb-row.rank-1{ border-left-color:var(--lb-gold); background:var(--lb-panel-2); padding-block:clamp(18px,2.4vw,28px); }
+  .lb-row.rank-1 .rank{ color:var(--lb-gold); font-size:clamp(22px,2.6vw,30px); }
+  .lb-row.rank-1 .name{ font-size:clamp(22px,2.8vw,32px); }
+  .lb-row.rank-1 .score{ color:var(--lb-gold); font-size:clamp(26px,3.2vw,42px); }
+  .lb-row.rank-2{ border-left-color:var(--lb-silver); }
+  .lb-row.rank-2 .rank{ color:var(--lb-silver); }
+  .lb-row.rank-3{ border-left-color:var(--lb-bronze); }
+  .lb-row.rank-3 .rank{ color:var(--lb-bronze); }
+  .lb-empty{
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    color:var(--lb-muted); text-align:center; padding:40px 20px;
+  }
+  .lb-empty h2{ color:var(--lb-text); font-size:clamp(20px,2.4vw,28px); }
+
+  @media (max-width:520px){
+    .kiosk-wrap{ padding-left:16px; padding-right:16px; }
+    .mode-tiles{ flex-direction:column; align-items:stretch; }
+  }
+</style>
+
+<div id="app"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var db = null;
+  var configUnsub = null, leaderboardUnsub = null, existingUnsub = null;
+
+  var state = {
+    mode: null,
+    step: "start",
+    selectedPlayer: null,
+    dupPlayer: null,
+    players: [],
+    searchTerm: "",
+    config: { title: "Live Scores", subtitle: "Booth Scoreboard" },
+    dbAvailable: null,
+    formError: "",
+    scoreError: "",
+    lastResultIsNewBest: false,
+    showSettings: false,
+    busy: false
+  };
+
+  var app = document.getElementById("app");
+
+  function escapeHtml(str){
+    return String(str == null ? "" : str).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[c];
+    });
+  }
+
+  function fmtScore(n){
+    if(n === null || n === undefined) return "—";
+    return Number(n).toLocaleString();
+  }
+
+  // ---------------- persistence helpers ----------------
+  function saveModePref(m){
+    try{ if(m) localStorage.setItem("boothScoreboardMode", m); else localStorage.removeItem("boothScoreboardMode"); }catch(e){}
+  }
+  function loadModePref(){
+    try{ return localStorage.getItem("boothScoreboardMode"); }catch(e){ return null; }
+  }
+
+  // ---------------- subscriptions ----------------
+  function subscribeConfig(){
+    if(!db) return;
+    if(configUnsub) configUnsub();
+    configUnsub = db.doc("config/event").onSnapshot(function(snap){
+      if(snap.exists){
+        var d = snap.data();
+        state.config = { title: (d.title || "Live Scores"), subtitle: (d.subtitle || "Booth Scoreboard") };
+      }
+      render();
+    }, function(){ /* keep defaults */ });
+  }
+
+  function subscribeLeaderboard(){
+    if(!db) return;
+    if(leaderboardUnsub) leaderboardUnsub();
+    leaderboardUnsub = db.collection("players")
+      .where("bestScore", ">=", 0)
+      .orderBy("bestScore", "desc")
+      .limit(50)
+      .onSnapshot(function(snap){
+        state.players = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+        render();
+      }, function(){ render(); });
+  }
+
+  function subscribeExisting(){
+    if(!db) return;
+    if(existingUnsub) existingUnsub();
+    existingUnsub = db.collection("players")
+      .orderBy("name")
+      .limit(300)
+      .onSnapshot(function(snap){
+        state.players = snap.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); });
+        renderExistingListOnly();
+      }, function(){ renderExistingListOnly(); });
+  }
+
+  function teardownExisting(){ if(existingUnsub){ existingUnsub(); existingUnsub = null; } }
+  function teardownLeaderboard(){ if(leaderboardUnsub){ leaderboardUnsub(); leaderboardUnsub = null; } }
+
+  // ---------------- mode / step transitions ----------------
+  function setMode(m){
+    teardownLeaderboard();
+    teardownExisting();
+    state.mode = m;
+    state.step = "start";
+    state.selectedPlayer = null;
+    state.players = [];
+    state.searchTerm = "";
+    state.formError = "";
+    state.scoreError = "";
+    saveModePref(m);
+    if(m === "leaderboard" && db) subscribeLeaderboard();
+    render();
+  }
+
+  function goStep(step){
+    if(state.step === "existing" && step !== "existing") teardownExisting();
+    state.step = step;
+    state.formError = "";
+    state.scoreError = "";
+    state.dupPlayer = null;
+    if(step === "start"){ state.selectedPlayer = null; state.searchTerm = ""; }
+    if(step === "existing" && db) subscribeExisting();
+    render();
+  }
+
+  // ---------------- writes ----------------
+  function createPlayer(name, company, email){
+    if(!db){ state.formError = "Not connected — check your connection and try again."; render(); return; }
+    name = name.trim(); company = company.trim(); email = email.trim();
+    if(!name || !company || !email){ state.formError = "Please fill in every field."; render(); return; }
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ state.formError = "That email address doesn’t look right."; render(); return; }
+    var emailLower = email.toLowerCase();
+    state.busy = true; state.formError = ""; render();
+    db.collection("players").where("emailLower", "==", emailLower).limit(1).get()
+      .then(function(snap){
+        if(!snap.empty){
+          var existing = snap.docs[0];
+          state.dupPlayer = Object.assign({ id: existing.id }, existing.data());
+          state.formError = "DUP";
+          state.busy = false; render();
+          return null;
+        }
+        var data = {
+          name: name, company: company, email: email, emailLower: emailLower,
+          bestScore: null, lastScore: null,
+          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+        };
+        return db.collection("players").add(data).then(function(ref){
+          state.selectedPlayer = Object.assign({ id: ref.id }, data);
+          state.step = "score";
+          state.formError = "";
+          state.busy = false; render();
+        });
+      })
+      .catch(function(){
+        state.formError = "Something went wrong saving your details — try again.";
+        state.busy = false; render();
+      });
+  }
+
+  function submitScore(rawValue){
+    if(!db){ state.scoreError = "Not connected — check your connection and try again."; render(); return; }
+    var n = Number(rawValue);
+    if(!Number.isFinite(n) || n < 0 || !Number.isInteger(n)){
+      state.scoreError = "Enter a whole number, 0 or higher.";
+      render(); return;
+    }
+    var player = state.selectedPlayer;
+    var prevBest = player.bestScore;
+    var newBest = (prevBest === null || prevBest === undefined || n > prevBest) ? n : prevBest;
+    state.busy = true; state.scoreError = ""; render();
+    db.doc("players/" + player.id).update({
+      bestScore: newBest, lastScore: n, updatedAt: new Date().toISOString()
+    }).then(function(){
+      state.selectedPlayer = Object.assign({}, player, { bestScore: newBest, lastScore: n });
+      state.lastResultIsNewBest = (prevBest === null || prevBest === undefined || n > prevBest);
+      state.step = "done";
+      state.busy = false; render();
+    }).catch(function(){
+      state.scoreError = "Could not save your score — try again.";
+      state.busy = false; render();
+    });
+  }
+
+  function saveSettings(title, subtitle){
+    if(!db){ state.showSettings = false; render(); return; }
+    title = title.trim() || "Live Scores";
+    subtitle = subtitle.trim() || "Booth Scoreboard";
+    state.busy = true; render();
+    db.doc("config/event").set({ title: title, subtitle: subtitle }).then(function(){
+      state.showSettings = false; state.busy = false; render();
+    }).catch(function(){
+      state.busy = false; render();
+    });
+  }
+
+  // ---------------- render: mode select ----------------
+  function modeSelectHTML(){
+    return (
+      '<div class="mode-select">' +
+        '<div class="eyebrow">Booth Scoreboard</div>' +
+        '<h1 style="font-size:clamp(28px,5vw,40px);text-align:center;">What is this screen for?</h1>' +
+        '<div class="mode-tiles">' +
+          '<div class="mode-tile" role="button" tabindex="0" data-action="choose-mode" data-mode="kiosk">' +
+            '<div class="tile-kicker">Station 1</div>' +
+            '<h3>Registration &amp; Play</h3>' +
+            '<p>Attendees sign up or find their name, then enter their score after each round.</p>' +
+          '</div>' +
+          '<div class="mode-tile" role="button" tabindex="0" data-action="choose-mode" data-mode="leaderboard">' +
+            '<div class="tile-kicker">Station 2</div>' +
+            '<h3>Leaderboard Display</h3>' +
+            '<p>A read-only, auto-updating scoreboard — put this on the big screen.</p>' +
+          '</div>' +
+        '</div>' +
+        '<p style="font-size:12px;color:var(--text-muted);max-width:360px;text-align:center;">This choice is remembered on this device. You can switch it later from the corner of the screen.</p>' +
+      '</div>'
+    );
+  }
+
+  // ---------------- render: kiosk ----------------
+  function stepIndex(step){
+    if(step === "start") return 0;
+    if(step === "new" || step === "existing") return 1;
+    if(step === "score") return 2;
+    return 3;
+  }
+  function stepsHTML(){
+    var labels = ["Identify", "Score", "Done"];
+    var idx = stepIndex(state.step);
+    return '<div class="steps">' + labels.map(function(lbl, i){
+      var cls = i < idx ? "step done" : (i === idx ? "step active" : "step");
+      return '<div class="' + cls + '"><div class="bar"></div><div class="label">' + lbl + '</div></div>';
+    }).join("") + '</div>';
+  }
+
+  function dbBannerHTML(){
+    if(state.dbAvailable !== false) return "";
+    return '<div class="notice notice-danger">Can’t reach live data right now. Make sure this page is open in a signed-in browser tab, then reload.</div>';
+  }
+
+  function kioskStartHTML(){
+    return (
+      '<div class="choice-list">' +
+        '<button class="choice-btn" data-action="go-new"><h3>New Player</h3><p>First time at our stand — register in a few seconds.</p></button>' +
+        '<button class="choice-btn" data-action="go-existing"><h3>Existing Player</h3><p>Played before? Find your name and add a score.</p></button>' +
+      '</div>'
+    );
+  }
+
+  function kioskNewHTML(){
+    var dup = "";
+    if(state.formError === "DUP" && state.dupPlayer){
+      dup = '<div class="notice notice-danger">That email is already registered as <strong>' + escapeHtml(state.dupPlayer.name) + '</strong>.' +
+        '<div style="margin-top:10px;"><button type="button" class="btn btn-secondary btn-block" data-action="use-dup">Use this player instead</button></div></div>';
+    } else if(state.formError){
+      dup = '<div class="notice notice-danger">' + escapeHtml(state.formError) + '</div>';
+    }
+    return (
+      '<form id="new-player-form">' +
+        dup +
+        '<div class="field"><label for="f-name">Name</label><input id="f-name" name="name" type="text" autocomplete="name" required data-autofocus></div>' +
+        '<div class="field"><label for="f-company">Company</label><input id="f-company" name="company" type="text" autocomplete="organization" required></div>' +
+        '<div class="field"><label for="f-email">Email</label><input id="f-email" name="email" type="email" autocomplete="email" required></div>' +
+        '<button type="submit" class="btn btn-primary btn-block"' + (state.busy ? " disabled" : "") + '>' + (state.busy ? "Saving…" : "Continue") + '</button>' +
+        '<button type="button" class="btn btn-ghost" data-action="go-start">← Back</button>' +
+      '</form>'
+    );
+  }
+
+  function playerListHTML(list){
+    if(!list.length){
+      return '<div class="empty-hint">No players found. Try a different name, or register as new.</div>';
+    }
+    return list.slice(0, 100).map(function(p){
+      return '<button type="button" class="player-row" data-action="select-player" data-id="' + escapeHtml(p.id) + '">' +
+        '<span class="name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="meta">' + escapeHtml(p.company || "") + '</span>' +
+      '</button>';
+    }).join("");
+  }
+
+  function filteredExisting(){
+    var term = (state.searchTerm || "").toLowerCase().trim();
+    if(!term) return state.players;
+    return state.players.filter(function(p){
+      return (p.name || "").toLowerCase().indexOf(term) !== -1 || (p.company || "").toLowerCase().indexOf(term) !== -1;
+    });
+  }
+
+  function renderExistingListOnly(){
+    var el = document.getElementById("existing-list");
+    if(el) el.innerHTML = playerListHTML(filteredExisting());
+  }
+
+  function kioskExistingHTML(){
+    return (
+      '<div class="search-box">' +
+        '<label for="existing-search" class="visually-hidden">Search your name</label>' +
+        '<input id="existing-search" type="text" placeholder="Search your name…" autocomplete="off" data-autofocus value="' + escapeHtml(state.searchTerm) + '">' +
+      '</div>' +
+      '<div id="existing-list">' + playerListHTML(filteredExisting()) + '</div>' +
+      '<button type="button" class="btn btn-ghost" data-action="go-start">← Back</button>'
+    );
+  }
+
+  function kioskScoreHTML(){
+    var p = state.selectedPlayer;
+    if(!p) return kioskStartHTML();
+    return (
+      '<div class="player-context">' +
+        '<span class="name">' + escapeHtml(p.name) + '</span>' +
+        '<span class="meta">' + escapeHtml(p.company || "") + '</span>' +
+      '</div>' +
+      '<div class="current-best">' +
+        '<span class="num">' + fmtScore(p.bestScore) + '</span>' +
+        '<span class="lbl">' + (p.bestScore == null ? "No score yet" : "Current best") + '</span>' +
+      '</div>' +
+      (state.scoreError ? '<div class="notice notice-danger">' + escapeHtml(state.scoreError) + '</div>' : "") +
+      '<form id="score-form">' +
+        '<div class="field"><label for="f-score">Score</label>' +
+          '<input id="f-score" name="score" class="score-input" type="number" inputmode="numeric" min="0" step="1" required data-autofocus></div>' +
+        '<button type="submit" class="btn btn-primary btn-block"' + (state.busy ? " disabled" : "") + '>' + (state.busy ? "Saving…" : "Save Score") + '</button>' +
+        '<button type="button" class="btn btn-ghost" data-action="go-start">Not you? Start over</button>' +
+      '</form>'
+    );
+  }
+
+  function kioskDoneHTML(){
+    var p = state.selectedPlayer;
+    return (
+      '<div class="done-banner">' +
+        '<div class="kicker">' + (state.lastResultIsNewBest ? "New best score" : "Score saved") + '</div>' +
+        '<div class="num">' + fmtScore(p.bestScore) + '</div>' +
+        '<div class="caption">' + escapeHtml(p.name) + (state.lastResultIsNewBest ? " just set a new personal best!" : " — best score still stands.") + '</div>' +
+      '</div>' +
+      '<div class="done-actions">' +
+        '<button type="button" class="btn btn-primary btn-block" data-action="play-again">Play Again</button>' +
+        '<button type="button" class="btn btn-secondary btn-block" data-action="next-player">Done — Next Player</button>' +
+      '</div>'
+    );
+  }
+
+  function kioskBodyHTML(){
+    if(state.step === "new") return kioskNewHTML();
+    if(state.step === "existing") return kioskExistingHTML();
+    if(state.step === "score") return kioskScoreHTML();
+    if(state.step === "done") return kioskDoneHTML();
+    return kioskStartHTML();
+  }
+
+  function kioskHTML(){
+    return (
+      '<div class="kiosk-screen">' +
+        '<div class="kiosk-wrap">' +
+          '<div class="kiosk-brand"><div class="title">' + escapeHtml(state.config.title) + '</div><div class="subtitle">' + escapeHtml(state.config.subtitle) + '</div></div>' +
+          stepsHTML() +
+          dbBannerHTML() +
+          '<div class="card">' + kioskBodyHTML() + '</div>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  // ---------------- render: leaderboard ----------------
+  function leaderboardRowsHTML(){
+    if(!state.players.length){
+      return '<div class="lb-empty"><h2>No scores yet</h2><p>Scores will appear here as soon as someone plays.</p></div>';
+    }
+    return '<div class="lb-list">' + state.players.map(function(p, i){
+      var rank = i + 1;
+      var rankCls = rank <= 3 ? " rank-" + rank : "";
+      return '<div class="lb-row' + rankCls + '">' +
+        '<div class="rank">' + rank + '</div>' +
+        '<div class="name">' + escapeHtml(p.name) + '</div>' +
+        '<div class="score">' + fmtScore(p.bestScore) + '</div>' +
+      '</div>';
+    }).join("") + '</div>';
+  }
+
+  function leaderboardHTML(){
+    return (
+      '<div class="lb">' +
+        '<div class="lb-header">' +
+          '<div><h1>' + escapeHtml(state.config.title) + '</h1><div class="subtitle">' + escapeHtml(state.config.subtitle) + '</div></div>' +
+          '<div class="lb-status">' +
+            '<div class="live-pill"><span class="live-dot"></span>LIVE</div>' +
+            '<div class="player-count">' + state.players.length + ' player' + (state.players.length === 1 ? "" : "s") + ' competing</div>' +
+          '</div>' +
+        '</div>' +
+        leaderboardRowsHTML() +
+      '</div>'
+    );
+  }
+
+  // ---------------- render: settings modal ----------------
+  function settingsModalHTML(){
+    if(!state.showSettings) return "";
+    return (
+      '<div class="modal-overlay" data-action="close-settings-backdrop">' +
+        '<div class="card modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">' +
+          '<h2 id="settings-title">Event Settings</h2>' +
+          '<p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">Shown on both the kiosk and the leaderboard display.</p>' +
+          '<form id="settings-form" style="gap:14px;">' +
+            '<div class="field"><label for="s-title">Title</label><input id="s-title" name="title" type="text" maxlength="60" value="' + escapeHtml(state.config.title) + '" data-autofocus></div>' +
+            '<div class="field"><label for="s-subtitle">Subtitle</label><input id="s-subtitle" name="subtitle" type="text" maxlength="80" value="' + escapeHtml(state.config.subtitle) + '"></div>' +
+            '<button type="submit" class="btn btn-primary btn-block"' + (state.busy ? " disabled" : "") + '>' + (state.busy ? "Saving…" : "Save") + '</button>' +
+            '<button type="button" class="btn btn-ghost" data-action="close-settings">Cancel</button>' +
+          '</form>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  var gearSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+
+  // ---------------- top-level render ----------------
+  function render(){
+    var html;
+    if(!state.mode){
+      html = modeSelectHTML();
+    } else if(state.mode === "leaderboard"){
+      html = leaderboardHTML() +
+        '<div class="device-switch" data-action="switch-mode">Switch device mode</div>' +
+        '<button type="button" class="settings-fab" data-action="open-settings" aria-label="Event settings">' + gearSvg + '</button>';
+    } else {
+      html = kioskHTML() +
+        '<div class="device-switch" data-action="switch-mode">Switch device mode</div>' +
+        '<button type="button" class="settings-fab" data-action="open-settings" aria-label="Event settings">' + gearSvg + '</button>';
+    }
+    html += settingsModalHTML();
+    app.innerHTML = html;
+    var focusEl = app.querySelector("[data-autofocus]");
+    if(focusEl) focusEl.focus();
+  }
+
+  // ---------------- event delegation ----------------
+  app.addEventListener("click", function(e){
+    var backdrop = e.target.closest && e.target.closest("[data-action='close-settings-backdrop']");
+    if(backdrop && e.target === backdrop){ state.showSettings = false; render(); return; }
+    var el = e.target.closest && e.target.closest("[data-action]");
+    if(!el) return;
+    var action = el.dataset.action;
+    if(action === "close-settings-backdrop") return;
+    switch(action){
+      case "choose-mode": setMode(el.dataset.mode); break;
+      case "switch-mode": setMode(null); break;
+      case "open-settings": state.showSettings = true; render(); break;
+      case "close-settings": state.showSettings = false; render(); break;
+      case "go-start": goStep("start"); break;
+      case "go-new": goStep("new"); break;
+      case "go-existing": goStep("existing"); break;
+      case "select-player": {
+        var id = el.dataset.id;
+        var p = state.players.filter(function(x){ return x.id === id; })[0];
+        if(p){ teardownExisting(); state.selectedPlayer = p; state.step = "score"; render(); }
+        break;
+      }
+      case "use-dup":
+        state.selectedPlayer = state.dupPlayer; state.step = "score"; state.formError = ""; render();
+        break;
+      case "play-again":
+        state.step = "score"; state.scoreError = ""; render();
+        break;
+      case "next-player": goStep("start"); break;
+    }
+  });
+
+  app.addEventListener("keydown", function(e){
+    if(e.key !== "Enter" && e.key !== " ") return;
+    var tile = e.target.closest && e.target.closest(".mode-tile[data-action]");
+    if(tile){ e.preventDefault(); setMode(tile.dataset.mode); }
+  });
+
+  app.addEventListener("submit", function(e){
+    e.preventDefault();
+    if(e.target.id === "new-player-form"){
+      var fd = new FormData(e.target);
+      createPlayer(String(fd.get("name") || ""), String(fd.get("company") || ""), String(fd.get("email") || ""));
+    } else if(e.target.id === "score-form"){
+      var fd2 = new FormData(e.target);
+      submitScore(fd2.get("score"));
+    } else if(e.target.id === "settings-form"){
+      var fd3 = new FormData(e.target);
+      saveSettings(String(fd3.get("title") || ""), String(fd3.get("subtitle") || ""));
+    }
+  });
+
+  app.addEventListener("input", function(e){
+    if(e.target.id === "existing-search"){
+      state.searchTerm = e.target.value;
+      renderExistingListOnly();
+    }
+  });
+
+  // ---------------- boot ----------------
+  function init(){
+    var params = new URLSearchParams(location.search);
+    var urlMode = params.get("mode");
+    if(urlMode === "kiosk" || urlMode === "leaderboard"){
+      state.mode = urlMode;
+      saveModePref(urlMode);
+    } else {
+      var saved = loadModePref();
+      if(saved === "kiosk" || saved === "leaderboard") state.mode = saved;
+    }
+    render();
+
+    var hot = window.claude && window.claude.hot;
+    var boot = function(){
+      if(!(window.claude && window.claude.use)){ state.dbAvailable = false; render(); return; }
+      window.claude.use("db").then(function(d){
+        db = d;
+        state.dbAvailable = !!d;
+        if(db){
+          subscribeConfig();
+          if(state.mode === "leaderboard") subscribeLeaderboard();
+          if(state.mode === "kiosk" && state.step === "existing") subscribeExisting();
+        }
+        render();
+      });
+    };
+    boot();
+  }
+
+  init();
+})();
+</script>
