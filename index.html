@@ -61,6 +61,8 @@
   :root:not([data-theme="light"]) .btn-secondary, :root[data-theme="dark"] .btn-secondary{ color:var(--text); }
   .btn-secondary:hover:not([disabled]){ filter:brightness(1.04); }
   .btn-ghost{ background:transparent; color:var(--text-muted); font-weight:500; min-height:auto; padding:8px 10px; border-radius:8px; }
+  .btn-danger{ background:var(--danger-soft); color:var(--danger); border:1.5px solid var(--danger); }
+  .btn-danger:hover:not([disabled]){ filter:brightness(1.04); }
   .btn-block{ width:100%; }
 
   .field{ display:flex; flex-direction:column; gap:6px; }
@@ -231,7 +233,10 @@
     display:grid; grid-template-columns:auto auto 1fr auto; align-items:center; gap:clamp(12px,2vw,22px);
     background:#0A2540; border:1px solid #163656; border-radius:var(--radius-card);
     padding:clamp(12px,1.6vw,20px) clamp(16px,2.2vw,26px); border-left:4px solid transparent;
+    width:100%; text-align:left; cursor:pointer; font-family:var(--font); appearance:none; margin:0;
   }
+  .lb-row:hover{ border-color:var(--halo-blue); }
+  .lb-row:focus-visible{ outline:3px solid var(--halo-blue); outline-offset:2px; }
   .lb-row .rank{ font-weight:700; font-variant-numeric:tabular-nums; color:#7FA3B8; font-size:clamp(16px,1.6vw,20px); min-width:2ch; }
   .lb-row .avatar{ width:clamp(34px,3.4vw,46px); height:clamp(34px,3.4vw,46px); font-size:clamp(13px,1.4vw,17px); }
   .lb-row .name{ font-weight:600; font-size:clamp(17px,1.9vw,24px); overflow-wrap:anywhere; }
@@ -281,7 +286,10 @@
     showSettings: false,
     busy: false,
     exportBusy: false,
-    exportError: ""
+    exportError: "",
+    editingPlayer: null,
+    editScoreError: "",
+    confirmRemove: false
   };
 
   var app = document.getElementById("app");
@@ -493,6 +501,37 @@
       });
   }
 
+  function editPlayerScore(id, rawValue){
+    if(!db){ state.editScoreError = "Not connected — check your connection and try again."; render(); return; }
+    var n = Number(rawValue);
+    if(!Number.isFinite(n) || n < 0 || !Number.isInteger(n)){
+      state.editScoreError = "Enter a whole number, 0 or higher.";
+      render(); return;
+    }
+    state.busy = true; state.editScoreError = ""; render();
+    db.doc("players/" + id).update({ bestScore: n, lastScore: n, updatedAt: new Date().toISOString() })
+      .then(function(){
+        state.busy = false; state.editingPlayer = null; render();
+      })
+      .catch(function(){
+        state.busy = false; state.editScoreError = "Could not save — try again.";
+        render();
+      });
+  }
+
+  function removePlayerScore(id){
+    if(!db){ state.editScoreError = "Not connected — check your connection and try again."; render(); return; }
+    state.busy = true; state.editScoreError = ""; render();
+    db.doc("players/" + id).update({ bestScore: null, lastScore: null, updatedAt: new Date().toISOString() })
+      .then(function(){
+        state.busy = false; state.editingPlayer = null; state.confirmRemove = false; render();
+      })
+      .catch(function(){
+        state.busy = false; state.editScoreError = "Could not remove — try again.";
+        render();
+      });
+  }
+
   function saveSettings(title, subtitle){
     if(!db){ state.showSettings = false; render(); return; }
     title = title.trim() || "Booth Challenge";
@@ -682,12 +721,12 @@
     return '<div class="lb-list">' + state.players.map(function(p, i){
       var rank = i + 1;
       var rankCls = rank <= 3 ? " rank-" + rank : "";
-      return '<div class="lb-row' + rankCls + '">' +
+      return '<button type="button" class="lb-row' + rankCls + '" data-action="open-edit" data-id="' + escapeHtml(p.id) + '">' +
         '<div class="rank">' + rank + '</div>' +
         avatarHtml(p.id, p.name, 40) +
         '<div class="name">' + escapeHtml(p.name) + '</div>' +
         '<div class="score">' + fmtScore(p.bestScore) + '</div>' +
-      '</div>';
+      '</button>';
     }).join("") + '</div>';
   }
 
@@ -730,6 +769,34 @@
     );
   }
 
+  function editScoreModalHTML(){
+    if(!state.editingPlayer) return "";
+    var p = state.editingPlayer;
+    return (
+      '<div class="modal-overlay" data-action="close-edit-backdrop">' +
+        '<div class="card modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">' +
+          '<div class="player-context" style="border:0;padding-bottom:0;margin-bottom:16px;">' +
+            avatarHtml(p.id, p.name, 44) +
+            '<span><span class="name" id="edit-title" style="display:block;">' + escapeHtml(p.name) + '</span><span class="meta">' + escapeHtml(p.company || "") + '</span></span>' +
+          '</div>' +
+          (state.editScoreError ? '<div class="notice notice-danger">' + escapeHtml(state.editScoreError) + '</div>' : "") +
+          '<form id="edit-score-form" style="gap:14px;">' +
+            '<div class="field"><label for="e-score">Score</label><input id="e-score" name="score" type="number" inputmode="numeric" min="0" step="1" required value="' + (p.bestScore == null ? "" : escapeHtml(p.bestScore)) + '" data-autofocus></div>' +
+            '<button type="submit" class="btn btn-primary btn-block"' + (state.busy ? " disabled" : "") + '>' + (state.busy ? "Saving…" : "Save Score") + '</button>' +
+          '</form>' +
+          '<div style="border-top:1px solid var(--border);margin-top:18px;padding-top:16px;display:flex;flex-direction:column;gap:10px;">' +
+            (state.confirmRemove
+              ? ('<div class="notice notice-danger">Remove ' + escapeHtml(p.name) + '’s score from the leaderboard? Their registration stays saved, so they can play again without re-registering.</div>' +
+                 '<button type="button" class="btn btn-danger btn-block" data-action="confirm-remove"' + (state.busy ? " disabled" : "") + '>' + (state.busy ? "Removing…" : "Yes, remove score") + '</button>' +
+                 '<button type="button" class="btn btn-ghost" data-action="cancel-remove">Cancel</button>')
+              : '<button type="button" class="btn btn-danger btn-block" data-action="ask-remove">Remove From Leaderboard</button>') +
+          '</div>' +
+          '<button type="button" class="btn btn-ghost" data-action="close-edit" style="margin-top:6px;">Close</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
   var gearSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
 
   // ---------------- top-level render ----------------
@@ -747,6 +814,7 @@
         '<button type="button" class="settings-fab" data-action="open-settings" aria-label="Event settings">' + gearSvg + '</button>';
     }
     html += settingsModalHTML();
+    html += editScoreModalHTML();
     app.innerHTML = html;
     var focusEl = app.querySelector("[data-autofocus]");
     if(focusEl) focusEl.focus();
@@ -754,12 +822,12 @@
 
   // ---------------- event delegation ----------------
   app.addEventListener("click", function(e){
-    var backdrop = e.target.closest && e.target.closest("[data-action='close-settings-backdrop']");
-    if(backdrop && e.target === backdrop){ state.showSettings = false; render(); return; }
+    var backdrop = e.target.closest && e.target.closest("[data-action='close-settings-backdrop'], [data-action='close-edit-backdrop']");
+    if(backdrop && e.target === backdrop){ state.showSettings = false; state.editingPlayer = null; state.confirmRemove = false; render(); return; }
     var el = e.target.closest && e.target.closest("[data-action]");
     if(!el) return;
     var action = el.dataset.action;
-    if(action === "close-settings-backdrop") return;
+    if(action === "close-settings-backdrop" || action === "close-edit-backdrop") return;
     switch(action){
       case "choose-mode": setMode(el.dataset.mode); break;
       case "switch-mode": setMode(null); break;
@@ -782,6 +850,16 @@
         break;
       case "next-player": goStep("start"); break;
       case "export-csv": exportPlayersCsv(); break;
+      case "open-edit": {
+        var rowId = el.dataset.id;
+        var row = state.players.filter(function(x){ return x.id === rowId; })[0];
+        if(row){ state.editingPlayer = row; state.editScoreError = ""; state.confirmRemove = false; render(); }
+        break;
+      }
+      case "close-edit": state.editingPlayer = null; state.confirmRemove = false; render(); break;
+      case "ask-remove": state.confirmRemove = true; render(); break;
+      case "cancel-remove": state.confirmRemove = false; render(); break;
+      case "confirm-remove": removePlayerScore(state.editingPlayer.id); break;
     }
   });
 
@@ -802,6 +880,9 @@
     } else if(e.target.id === "settings-form"){
       var fd3 = new FormData(e.target);
       saveSettings(String(fd3.get("title") || ""), String(fd3.get("subtitle") || ""));
+    } else if(e.target.id === "edit-score-form"){
+      var fd4 = new FormData(e.target);
+      editPlayerScore(state.editingPlayer.id, fd4.get("score"));
     }
   });
 
