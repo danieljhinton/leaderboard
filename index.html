@@ -279,7 +279,9 @@
     scoreError: "",
     lastResultIsNewBest: false,
     showSettings: false,
-    busy: false
+    busy: false,
+    exportBusy: false,
+    exportError: ""
   };
 
   var app = document.getElementById("app");
@@ -450,6 +452,45 @@
       state.scoreError = "Could not save your score — try again.";
       state.busy = false; render();
     });
+  }
+
+  function csvField(v){
+    var s = (v === null || v === undefined) ? "" : String(v);
+    if(/[",\n\r]/.test(s)){ s = '"' + s.replace(/"/g, '""') + '"'; }
+    return s;
+  }
+
+  function exportPlayersCsv(){
+    if(!db){ state.exportError = "Not connected — check your connection and try again."; render(); return; }
+    state.exportBusy = true; state.exportError = ""; render();
+    db.collection("players").orderBy("name").limit(1000).get()
+      .then(function(snap){
+        var rows = [["Name", "Company", "Email", "Best Score", "Last Score", "Registered At", "Updated At"]];
+        snap.docs.forEach(function(d){
+          var p = d.data();
+          rows.push([
+            p.name || "", p.company || "", p.email || "",
+            (p.bestScore === null || p.bestScore === undefined) ? "" : p.bestScore,
+            (p.lastScore === null || p.lastScore === undefined) ? "" : p.lastScore,
+            p.createdAt || "", p.updatedAt || ""
+          ]);
+        });
+        var csv = rows.map(function(row){ return row.map(csvField).join(","); }).join("\r\n");
+        return window.claude.use("downloads").then(function(downloads){
+          if(!downloads){ throw { code: "unavailable" }; }
+          var stamp = new Date().toISOString().slice(0, 10);
+          return downloads.save({ filename: "players-" + stamp + ".csv", data: csv });
+        });
+      })
+      .then(function(){
+        state.exportBusy = false; render();
+      })
+      .catch(function(err){
+        state.exportBusy = false;
+        var code = err && err.code;
+        state.exportError = (code === "declined") ? "" : "Could not export the data — try again.";
+        render();
+      });
   }
 
   function saveSettings(title, subtitle){
@@ -679,6 +720,11 @@
             '<button type="submit" class="btn btn-primary btn-block"' + (state.busy ? " disabled" : "") + '>' + (state.busy ? "Saving…" : "Save") + '</button>' +
             '<button type="button" class="btn btn-ghost" data-action="close-settings">Cancel</button>' +
           '</form>' +
+          '<div style="border-top:1px solid var(--border);margin-top:20px;padding-top:18px;display:flex;flex-direction:column;gap:10px;">' +
+            '<div><div style="font-weight:600;font-size:14px;">Player Data</div><div style="font-size:12px;color:var(--text-muted);">Download every registered player — name, company, email, and scores — as a CSV file.</div></div>' +
+            (state.exportError ? '<div class="notice notice-danger">' + escapeHtml(state.exportError) + '</div>' : "") +
+            '<button type="button" class="btn btn-secondary btn-block" data-action="export-csv"' + (state.exportBusy ? " disabled" : "") + '>' + (state.exportBusy ? "Preparing…" : "Download CSV") + '</button>' +
+          '</div>' +
         '</div>' +
       '</div>'
     );
@@ -717,7 +763,7 @@
     switch(action){
       case "choose-mode": setMode(el.dataset.mode); break;
       case "switch-mode": setMode(null); break;
-      case "open-settings": state.showSettings = true; render(); break;
+      case "open-settings": state.showSettings = true; state.exportError = ""; render(); break;
       case "close-settings": state.showSettings = false; render(); break;
       case "go-start": goStep("start"); break;
       case "go-new": goStep("new"); break;
@@ -735,6 +781,7 @@
         state.step = "score"; state.scoreError = ""; render();
         break;
       case "next-player": goStep("start"); break;
+      case "export-csv": exportPlayersCsv(); break;
     }
   });
 
