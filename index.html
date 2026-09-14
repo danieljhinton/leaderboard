@@ -240,6 +240,7 @@
     background:#0A2540; border:1px solid #163656; border-radius:var(--radius-card);
     padding:clamp(12px,1.6vw,20px) clamp(16px,2.2vw,26px); border-left:4px solid transparent;
     width:100%; text-align:left; cursor:pointer; font-family:var(--font); appearance:none; margin:0;
+    color:#F3FAFC;
   }
   .lb-row:hover{ border-color:var(--halo-blue); }
   .lb-row:focus-visible{ outline:3px solid var(--halo-blue); outline-offset:2px; }
@@ -247,8 +248,9 @@
   .lb-row .avatar{ width:clamp(34px,3.4vw,46px); height:clamp(34px,3.4vw,46px); font-size:clamp(13px,1.4vw,17px); }
   .lb-row .name{ font-weight:600; font-size:clamp(17px,1.9vw,24px); overflow-wrap:anywhere; }
   .lb-row .score{ font-weight:700; text-align:right; font-variant-numeric:tabular-nums; font-size:clamp(20px,2.4vw,30px); }
-  .lb-row.rank-1{ border-left-color:var(--halo-blue); background:#0F3050; padding-block:clamp(18px,2.4vw,28px); }
-  .lb-row.rank-1 .rank{ color:var(--halo-blue); font-size:clamp(22px,2.6vw,30px); }
+  .lb-row.rank-1{ border-left-color:#F2C94C; background:#0F3050; padding-block:clamp(18px,2.4vw,28px); }
+  .lb-row.rank-1 .rank{ color:var(--halo-blue); font-size:clamp(22px,2.6vw,30px); display:flex; align-items:center; }
+  .lb-row.rank-1 .rank svg{ width:clamp(30px,3.4vw,40px); height:clamp(30px,3.4vw,40px); }
   .lb-row.rank-1 .name{ font-size:clamp(22px,2.8vw,32px); }
   .lb-row.rank-1 .score{ color:var(--halo-blue); font-size:clamp(26px,3.2vw,42px); }
   .lb-row.rank-2{ border-left-color:var(--teal); }
@@ -743,6 +745,14 @@
   }
 
   // ---------------- render: leaderboard ----------------
+  var GOLD_MEDAL_SVG = '<svg viewBox="0 0 32 32" aria-hidden="true">' +
+    '<path d="M12 3 L16 15 L9 11 Z" fill="#0A2540"></path>' +
+    '<path d="M20 3 L16 15 L23 11 Z" fill="#0A2540"></path>' +
+    '<circle cx="16" cy="20" r="10" fill="#F2C94C" stroke="#C6960F" stroke-width="1.5"></circle>' +
+    '<circle cx="16" cy="20" r="6.5" fill="none" stroke="#C6960F" stroke-width="1"></circle>' +
+    '<text x="16" y="24" font-size="10" font-weight="700" text-anchor="middle" fill="#7A4E00">1</text>' +
+  '</svg>';
+
   function leaderboardRowsHTML(){
     if(!state.players.length){
       return '<div class="lb-empty"><h2>No scores yet</h2><p>Scores will appear here as soon as someone plays.</p></div>';
@@ -751,7 +761,7 @@
       var rank = i + 1;
       var rankCls = rank <= 3 ? " rank-" + rank : "";
       return '<button type="button" class="lb-row' + rankCls + '" data-action="open-edit" data-id="' + escapeHtml(p.id) + '">' +
-        '<div class="rank">' + rank + '</div>' +
+        '<div class="rank">' + (rank === 1 ? GOLD_MEDAL_SVG : rank) + '</div>' +
         avatarHtml(p.id, p.name, 40) +
         '<div class="name">' + escapeHtml(p.name) + '</div>' +
         '<div class="score">' + fmtScore(p.bestScore) + '</div>' +
